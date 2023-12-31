@@ -1,7 +1,7 @@
 # Sciencetopia 后端 Python 部分
 
 ## 概述
-Sciencetopia的后端Python部分专注于提供AI相关的功能，如生成学习计划。它使用Flask框架构建，并与OpenAI GPT-3.5模型集成。
+Sciencetopia的后端Python部分专注于提供AI相关的功能，如生成学习计划。它使用Flask框架构建，并与OpenAI GPT-3.5模型集成。这个部分生成独立的API端口，和.NET编写的后端部分完全独立。
 
 ## 主要特性
 - **生成学习计划**：基于用户提供的主题和描述，使用OpenAI GPT-3.5模型生成个性化学习计划。
