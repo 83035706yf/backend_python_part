@@ -5,26 +5,6 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/api/test": {
-      "get": {
-        "summary": "Fetches a test message",
-        "description": "This endpoint returns a test message to verify the API is working correctly.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "message": {
-                  "type": "string",
-                  "example": "This is a test"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/studyplan": {
       "post": {
         "summary": "Generate Study Plan",
