@@ -9,7 +9,7 @@ Sciencetopia的后端Python部分专注于提供AI相关的功能，如生成学
 
 ## 技术栈
 - **Flask**：轻量级的Web应用框架。
-- **OpenAI GPT-3.5**：用于生成学习计划的AI模型。
+- **OpenAI GPT-4o-mini**：用于生成学习计划的AI模型。
 - **Swagger**：用于API文档的自动生成。
 
 ## 如何开始

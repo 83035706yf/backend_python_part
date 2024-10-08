@@ -5,7 +5,7 @@ from flask_cors import CORS
 
 def create_app():
     app = Flask(__name__)
-    cors = CORS(app, resources={r"/api/*": {"origins": "http://localhost:8080", "supports_credentials": True}})
+    cors = CORS(app, resources={r"/api/*": {"origins": "http://localhost:8088", "supports_credentials": True}})
     app.config.from_object('config')
 
     api_bp = Blueprint('api', __name__)
