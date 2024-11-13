@@ -1,10 +1,10 @@
 from app import create_app
-# import logging
-
-# logging.basicConfig(filename='error.log', level=logging.ERROR)
-# logging.getLogger('flask_cors').level = logging.DEBUG
 
 app = create_app()
+
+@app.teardown_appcontext
+def close_neo4j_db(exception):
+    app.neo4j_db.close()  # Close Neo4j database connection when app context ends
 
 if __name__ == '__main__':
     app.run(port=5086)

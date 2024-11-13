@@ -48,8 +48,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "Name": { "type": "string" },
-                  "Description": { "type": "string" }
+                  "Name": { "type": "string" }
                 }
               }
             }
