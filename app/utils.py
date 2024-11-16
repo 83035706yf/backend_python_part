@@ -1,6 +1,13 @@
 import requests
-from neo4j import GraphDatabase
 from flask import current_app as app
+from duckduckgo_search import DDGS
+import urllib.parse
+import time
+import io
+import sys
+
+# Configure UTF-8 output
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 # URL validation
 def is_valid_url(url):
@@ -11,25 +18,39 @@ def is_valid_url(url):
     except requests.RequestException:
         return False
 
-# GPT resource validation
-def validate_gpt_resources(gpt_resources):
-    """Validate each resource from GPT."""
-    valid_resources = []
-    for resource in gpt_resources:
-        if is_valid_url(resource["link"]):
-            valid_resources.append(resource)
-    return valid_resources
+# Search for relevant resources using topic name and keywords
+def search_resources(topic_name, keywords, max_results=3, retries=0, delay=5):
+    query = f"{topic_name} {' '.join(keywords)}"
+    for attempt in range(retries):
+        try:
+            with DDGS() as ddgs:
+                results = ddgs.text(query, region="wt-wt", safesearch="moderate", timelimit="y")
+                filtered_results = [
+                    {"name": result["title"], "link": result["href"]}
+                    for result in results[:max_results]
+                    if "title" in result and "href" in result
+                ]
+                return filtered_results
+        except Exception as e:
+            if "Ratelimit" in str(e):
+                print(f"Rate limit hit. Retrying in {delay} seconds...")
+                time.sleep(delay)
+                delay *= 2  # Exponential backoff
+            else:
+                print(f"Error fetching resources: {e}")
+                break
+    return []
 
 # Main study plan transformation
 def transform_study_plan(gpt_output):
-    # Split the output into sections based on headers
+    """Transform GPT output into structured JSON with resources."""
     sections = gpt_output.split('##')
     
     # Extract the title (first line of the output)
     title = sections[0].strip().replace("#", "").strip() if sections[0].strip().startswith("#") else "Untitled Study Plan"
 
     # Initialize dictionaries for each section
-    introduction = ""
+    introduction = {"description": "", "keywords": []}
     prerequisites = []
     main_curriculum = []
     advanced_topics = []
@@ -39,8 +60,12 @@ def transform_study_plan(gpt_output):
         section = section.strip()
         
         if section.startswith("Introduction"):
-            introduction = section.replace("Introduction:", "").strip()
-        
+            lines = section.split("\n")
+            introduction["description"] = lines[1].strip()
+            for line in lines:
+                if line.startswith("Keywords:"):
+                    introduction["keywords"] = [kw.strip() for kw in line.replace("Keywords:", "").split(",")]
+
         elif section.startswith("Prerequisites") or section.startswith("Main Topics") or section.startswith("Advanced Topics"):
             lines = section.split("\n")[1:]
             i = 0
@@ -50,64 +75,27 @@ def transform_study_plan(gpt_output):
                     parts = line.split("**")
                     if len(parts) > 2:
                         topic_name = parts[1].strip()
-                        
-                        # Ensure the description does not include a leading colon
-                        description_part = parts[2].strip()
-                        if description_part.startswith(":") | description_part.startswith("："):
-                            description = description_part[1:].strip()  # Remove the leading colon
-                        else:
-                            description = description_part.strip()
+                        description = parts[2].strip(":：").strip()
 
-                        # Query Neo4j for relevant resources
-                        existing_resources = app.neo4j_db.query_resources(topic_name)
-                        
-                        # Collect GPT resources for this topic
-                        gpt_resources = []
-                        i += 1  # Move to the potential resource line
-                        while i < len(lines) and "Resource: " in lines[i]:
-                            resource_line = lines[i].strip()
+                        # Collect keywords for the topic
+                        keywords = []
+                        i += 1
+                        while i < len(lines) and "Keywords:" in lines[i]:
+                            keyword_line = lines[i].strip()
+                            if "Keywords:" in keyword_line:
+                                keywords = [kw.strip() for kw in keyword_line.replace("Keywords:", "").split(",")]
+                            i += 1
 
-                            # Safer splitting of the URL
-                            if "https://" in resource_line:
-                                try:
-                                    resource_link = resource_line.split("https://")[1].split(")")[0].strip()
-                                    resource_link = "https://" + resource_link
-                                except IndexError:
-                                    resource_link = None  # Handle error gracefully
+                        # Search for relevant resources
+                        resources = search_resources(topic_name, keywords)
 
-                            # Optionally parse resource name if provided (e.g., in square brackets)
-                            if "[" in resource_line and "]" in resource_line:
-                                resource_name = resource_line.split("[")[1].split("]")[0].strip()
-                            else:
-                                resource_name = "Unnamed resource"
-
-                            # Only add the resource if the link is valid
-                            if resource_link:
-                                gpt_resources.append({
-                                    "name": resource_name,
-                                    "link": resource_link
-                                })
-                            i += 1  # Move to the next line
-                        
-                        # Validate GPT resources
-                        valid_gpt_resources = validate_gpt_resources(gpt_resources)
-
-                        # Merge Neo4j resources with valid GPT resources
-                        all_resources = existing_resources + valid_gpt_resources
-
-                        # If no resources are found, skip adding an empty resource list
-                        if all_resources:
-                            entry = {
-                                "name": topic_name,
-                                "description": description,
-                                "resources": all_resources
-                            }
-                        else:
-                            entry = {
-                                "name": topic_name,
-                                "description": description,
-                                "resources": []
-                            }
+                        # Create the entry
+                        entry = {
+                            "name": topic_name,
+                            "description": description,
+                            "keywords": keywords,
+                            "resources": resources
+                        }
 
                         if section.startswith("Prerequisites"):
                             prerequisites.append(entry)
@@ -127,6 +115,4 @@ def transform_study_plan(gpt_output):
         "advancedTopics": advanced_topics
     }
 
-    # Return the JSON as a dictionary (to be converted later if needed)
     return study_plan_json
-

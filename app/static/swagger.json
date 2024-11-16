@@ -48,8 +48,114 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "Name": { "type": "string" }
+                  "Name": {
+                    "type": "string"
+                  }
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/test_search_resources": {
+      "post": {
+        "summary": "Resource Search",
+        "description": "Search for learning resources based on a topic name and keywords using DuckDuckGo.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "topic_name": {
+                      "type": "string"
+                    },
+                    "keywords": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "resources": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "link": {
+                            "type": "string",
+                            "format": "url"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "description": "Search Resources Request",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "topic_name": {
+                    "type": "string"
+                  },
+                  "keywords": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "max_results": {
+                    "type": "integer",
+                    "default": 3
+                  }
+                },
+                "required": [
+                  "topic_name",
+                  "keywords"
+                ]
               }
             }
           }
