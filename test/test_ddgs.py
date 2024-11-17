@@ -6,7 +6,7 @@ from duckduckgo_search import DDGS
 # Configure UTF-8 output
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-def search_resources_with_backoff(topic_name, keywords, max_results=3, retries=0, delay=5):
+def search_resources_with_backoff(topic_name, keywords, max_results=3, retries=3, delay=5):
     query = f"{topic_name} {' '.join(keywords)}"
     print(f"Constructed Query: {query}")
     for attempt in range(retries):

@@ -1,10 +1,16 @@
 import requests
-from flask import current_app as app
-from duckduckgo_search import DDGS
-import urllib.parse
+import os
 import time
 import io
 import sys
+
+# Retrieve API key and search engine ID from environment variables
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GOOGLE_CX = os.getenv("GOOGLE_CX")
+
+# Ensure the API key and search engine ID are set
+if not GOOGLE_API_KEY or not GOOGLE_CX:
+    raise EnvironmentError("Google API key or Search Engine ID is missing!")
 
 # Configure UTF-8 output
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -18,27 +24,35 @@ def is_valid_url(url):
     except requests.RequestException:
         return False
 
-# Search for relevant resources using topic name and keywords
-def search_resources(topic_name, keywords, max_results=3, retries=0, delay=5):
+# Search for relevant resources using Google Custom Search API
+def search_resources(topic_name, keywords, max_results=3, retries=3, delay=5):
     query = f"{topic_name} {' '.join(keywords)}"
+    print(f"Constructed Query: {query}")
+    
+    api_url = "https://www.googleapis.com/customsearch/v1"
+    params = {
+        "key": GOOGLE_API_KEY,
+        "cx": GOOGLE_CX,
+        "q": query,
+        "num": max_results,
+    }
+    
     for attempt in range(retries):
         try:
-            with DDGS() as ddgs:
-                results = ddgs.text(query, region="wt-wt", safesearch="moderate", timelimit="y")
-                filtered_results = [
-                    {"name": result["title"], "link": result["href"]}
-                    for result in results[:max_results]
-                    if "title" in result and "href" in result
-                ]
-                return filtered_results
-        except Exception as e:
-            if "Ratelimit" in str(e):
-                print(f"Rate limit hit. Retrying in {delay} seconds...")
-                time.sleep(delay)
-                delay *= 2  # Exponential backoff
-            else:
-                print(f"Error fetching resources: {e}")
-                break
+            response = requests.get(api_url, params=params, timeout=10)
+            response.raise_for_status()
+            results = response.json().get("items", [])
+            filtered_results = [
+                {"name": item["title"], "link": item["link"]}
+                for item in results
+                if "title" in item and "link" in item
+            ]
+            return filtered_results
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching resources: {e}. Retrying in {delay} seconds...")
+            time.sleep(delay)
+            delay *= 2  # Exponential backoff for retries
+    print("Exhausted retries.")
     return []
 
 # Main study plan transformation
